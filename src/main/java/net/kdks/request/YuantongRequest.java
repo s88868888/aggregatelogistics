@@ -67,6 +67,19 @@ public class YuantongRequest {
     }
 
     /**
+     * 创建订单.
+     *
+     * @param param 参数
+     * @param format 格式
+     * @return 下单结果
+     */
+    public String createOrderRequest(String param, String format) {
+        String requestUrl =
+            requestUrlPrefix + YuantongMethod.CREATE_ORDER_URL + YuantongMethod.URL_VERSION + userId;
+        return request(YuantongMethod.CREATE_ORDER, requestUrl, param, format);
+    }
+
+    /**
      * 圆通通用请求.
      *
      * @param method 方法

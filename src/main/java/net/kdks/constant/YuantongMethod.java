@@ -15,6 +15,10 @@ public interface YuantongMethod {
      * 运费预估.
      */
     String QUERY_PRICE = "yto.Marketing.TransportPrice";
+    /**
+     * 创建订单.
+     */
+    String CREATE_ORDER = "yto.Online.Order.Create";
 
     String URL_PREFIX = "http://openapi.yto.net.cn/service/";
 
@@ -26,5 +30,6 @@ public interface YuantongMethod {
 
     String QUERY_PRICE_URL = "charge_query";
 
+    String CREATE_ORDER_URL = "order_create";
 
 }

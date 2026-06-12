@@ -155,13 +155,141 @@ public class ExpressShunfengHandler implements ExpressHandler {
     /**
      * 运费预估.
      *
-     * @param expressPriceParam 起始省份、起始城市、目的身份、目的城市、重量、长、宽、高
+     * @param expressPriceParam 起始省份、起始城市、目的省份、目的城市、重量、长、宽、高
      * @return 运费
      */
     @Override
     public ExpressResponse<ExpressPriceResult> getExpressPrice(
         ExpressPriceParam expressPriceParam) {
-        return ExpressResponse.failed(CommonConstant.NO_SOPPORT);
+        String serviceCode = "EXP_RECE_QUERY_SFPRICE";
+
+        Map<String, Object> paramItemsMap = new HashMap<>(8);
+        paramItemsMap.put("searchPrice", "1");
+        paramItemsMap.put("expectedTime", "");
+
+        // 寄件地址
+        Map<String, Object> srcAddress = new HashMap<>(4);
+        srcAddress.put("province", expressPriceParam.getStartProvince());
+        srcAddress.put("city", expressPriceParam.getStartCity());
+        srcAddress.put("district", expressPriceParam.getStartDistrict() != null ? expressPriceParam.getStartDistrict() : "");
+        srcAddress.put("address", expressPriceParam.getStartAddress() != null ? expressPriceParam.getStartAddress() : "");
+        paramItemsMap.put("srcAddress", srcAddress);
+
+        // 收件地址
+        Map<String, Object> destAddress = new HashMap<>(4);
+        destAddress.put("province", expressPriceParam.getEndProvince());
+        destAddress.put("city", expressPriceParam.getEndCity());
+        destAddress.put("district", expressPriceParam.getEndDistrict() != null ? expressPriceParam.getEndDistrict() : "");
+        destAddress.put("address", expressPriceParam.getEndAddress() != null ? expressPriceParam.getEndAddress() : "");
+        paramItemsMap.put("destAddress", destAddress);
+
+        // 货物信息
+        Map<String, Object> cargoDetails = new HashMap<>(4);
+        cargoDetails.put("weight", expressPriceParam.getWeight() != null ? expressPriceParam.getWeight() : 1);
+        if (expressPriceParam.getLength() != null) cargoDetails.put("length", expressPriceParam.getLength());
+        if (expressPriceParam.getWidth() != null) cargoDetails.put("width", expressPriceParam.getWidth());
+        if (expressPriceParam.getHeight() != null) cargoDetails.put("height", expressPriceParam.getHeight());
+        paramItemsMap.put("cargoDetails", cargoDetails);
+
+        Map<String, Object> paramMap = getBaseParam(serviceCode, paramItemsMap);
+        String responseData = HttpRequest.post(getRequestUrl())
+            .header(Header.CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .form(paramMap)
+            .execute().body();
+
+        return disposePriceResult(responseData);
+    }
+
+    private ExpressResponse<ExpressPriceResult> disposePriceResult(String responseData) {
+        ShunfengResult result = JSON.parseObject(responseData, ShunfengResult.class);
+        if (SUCCESS_FLAG.equals(result.getApiResultCode())) {
+            if (result.getApiResultData().getSuccess()) {
+                // 解析价格字段
+                String msgDataStr = JSON.toJSONString(result.getApiResultData().getMsgData());
+                com.alibaba.fastjson.JSONObject msgData = JSON.parseObject(msgDataStr);
+                if (msgData != null) {
+                    ExpressPriceResult priceResult = new ExpressPriceResult();
+                    // 顺丰返回 totalPrice 或 price 字段
+                    java.math.BigDecimal price = msgData.getBigDecimal("totalPrice");
+                    if (price == null) price = msgData.getBigDecimal("price");
+                    if (price == null) price = msgData.getBigDecimal("freight");
+                    priceResult.setPrice(price);
+                    priceResult.setTime(msgData.getBigDecimal("deliveryTime"));
+                    return ExpressResponse.ok(priceResult);
+                }
+            } else {
+                return ExpressResponse.failed(result.getApiResultData().getErrorMsg());
+            }
+        }
+        return ExpressResponse.failed(result.getApiErrorMsg());
+    }
+
+    /**
+     * 清单运费查询（EXP_RECE_QUERY_SFWAYBILL）.
+     * 通过运单号查询实际运费明细。
+     *
+     * @param trackingNo 运单号
+     * @return 运费信息（waybillInfo + waybillFeeList）
+     */
+    public ExpressResponse<com.alibaba.fastjson.JSONObject> queryWaybillFee(String trackingNo) {
+        String serviceCode = "EXP_RECE_QUERY_SFWAYBILL";
+        Map<String, Object> paramItemsMap = new HashMap<>(3);
+        paramItemsMap.put("trackingType", "2");
+        paramItemsMap.put("trackingNum", trackingNo);
+
+        Map<String, Object> paramMap = getBaseParam(serviceCode, paramItemsMap);
+        String responseData = HttpRequest.post(getRequestUrl())
+            .header(Header.CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .form(paramMap)
+            .execute().body();
+
+        return disposeWaybillFeeResult(responseData);
+    }
+
+    private ExpressResponse<com.alibaba.fastjson.JSONObject> disposeWaybillFeeResult(String responseData) {
+        com.alibaba.fastjson.JSONObject json = JSON.parseObject(responseData);
+        if (json == null) {
+            return ExpressResponse.failed("响应为空");
+        }
+        // 清单运费查询接口直接返回 {success, errorCode, errorMsg, msgData}
+        // 不走 apiResultCode/apiResultData 的嵌套结构
+        Boolean success = json.getBoolean("success");
+        if (Boolean.TRUE.equals(success)) {
+            Object msgDataObj = json.get("msgData");
+            com.alibaba.fastjson.JSONObject msgData = null;
+            if (msgDataObj instanceof com.alibaba.fastjson.JSONObject) {
+                msgData = (com.alibaba.fastjson.JSONObject) msgDataObj;
+            } else if (msgDataObj instanceof String) {
+                msgData = JSON.parseObject((String) msgDataObj);
+            }
+            if (msgData != null) {
+                return ExpressResponse.ok(msgData);
+            }
+            return ExpressResponse.failed("msgData 为空");
+        }
+        // 可能走旧格式 apiResultCode
+        String apiResultCode = json.getString("apiResultCode");
+        if (SUCCESS_FLAG.equals(apiResultCode)) {
+            String apiResultDataStr = json.getString("apiResultData");
+            com.alibaba.fastjson.JSONObject apiResultData = JSON.parseObject(apiResultDataStr);
+            if (apiResultData != null && Boolean.TRUE.equals(apiResultData.getBoolean("success"))) {
+                Object msgDataObj = apiResultData.get("msgData");
+                com.alibaba.fastjson.JSONObject msgData = null;
+                if (msgDataObj instanceof com.alibaba.fastjson.JSONObject) {
+                    msgData = (com.alibaba.fastjson.JSONObject) msgDataObj;
+                } else if (msgDataObj instanceof String) {
+                    msgData = JSON.parseObject((String) msgDataObj);
+                }
+                if (msgData != null) {
+                    return ExpressResponse.ok(msgData);
+                }
+            }
+            String errorMsg = apiResultData != null ? apiResultData.getString("errorMessage") : null;
+            return ExpressResponse.failed(errorMsg != null ? errorMsg : "查询失败");
+        }
+        String errorMsg = json.getString("errorMsg");
+        if (errorMsg == null) errorMsg = json.getString("apiErrorMsg");
+        return ExpressResponse.failed(errorMsg != null ? errorMsg : "查询失败");
     }
 
     /**
@@ -249,7 +377,11 @@ public class ExpressShunfengHandler implements ExpressHandler {
                                              Map<String, Object> paramItemsMap) {
         Map<String, Object> paramMap = new HashMap<>(6);
         String partnerId = shunfengConfig.getPartnerId();
+        // requestId 每次请求生成唯一UUID，若配置中有值则使用配置值
         String requestId = shunfengConfig.getRequestId();
+        if (StringUtils.isEmpty(requestId)) {
+            requestId = java.util.UUID.randomUUID().toString();
+        }
         Long timestamp = DateUtils.currentTimeMillis();
         String msgDigest = null;
         paramMap.put("partnerID", partnerId);
@@ -261,12 +393,7 @@ public class ExpressShunfengHandler implements ExpressHandler {
 
         StringBuilder beforeDigestStr = new StringBuilder(param);
         beforeDigestStr.append(timestamp).append(shunfengConfig.getCheckWord());
-        try {
-            msgDigest = URLEncoder.encode(beforeDigestStr.toString(), "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
-        msgDigest = Base64.getEncoder().encodeToString(DigestUtils.md5Digest(msgDigest));
+        msgDigest = Base64.getEncoder().encodeToString(DigestUtils.md5Digest(beforeDigestStr.toString()));
         paramMap.put("msgDigest", msgDigest);
         return paramMap;
     }

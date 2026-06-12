@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>net.kdks</groupId>
     <artifactId>aggregatelogistics</artifactId>
-    <version>0.0.13</version>
+    <version>1.0.0</version>
     <name>aggregatelogistics</name>
     <url>https://github.com/fuzui/aggregatelogistics</url>
     <description>
@@ -30,9 +30,7 @@
 
     <developers>
         <developer>
-            <name>Ze.Wang</name>
-            <email>73400@163.com</email>
-            <url>https://www.fuzui.net</url>
+            <name>linson</name>
             <timezone>+8</timezone>
         </developer>
     </developers>
@@ -67,6 +65,7 @@
         <fastjson.version>1.2.73</fastjson.version>
         <hutool-http.version>5.4.3</hutool-http.version>
         <lombok.version>1.18.24</lombok.version>
+        <spring-boot.version>2.7.18</spring-boot.version>
         <nexus-staging-maven-plugin.version>1.6.7</nexus-staging-maven-plugin.version>
     </properties>
     <dependencies>
@@ -91,6 +90,26 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
+        </dependency>
+        <!-- Spring Boot Auto Configuration (optional，非 Spring Boot 项目不会引入) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+            <version>${spring-boot.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <version>${spring-boot.version}</version>
+            <optional>true</optional>
+        </dependency>
+        <!-- SLF4J (optional，Spring Boot 项目已有) -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.36</version>
+            <optional>true</optional>
         </dependency>
     </dependencies>
     <build>
@@ -160,27 +179,6 @@
                 <configuration>
                     <skip>true</skip>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>${maven-gpg.version}</version>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                        <configuration>
-                            <!-- Prevent `gpg` from using pinentry programs -->
-                            <gpgArguments>
-                                <arg>--pinentry-mode</arg>
-                                <arg>loopback</arg>
-                            </gpgArguments>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>

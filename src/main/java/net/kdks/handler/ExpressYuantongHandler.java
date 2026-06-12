@@ -189,7 +189,108 @@ public class ExpressYuantongHandler implements ExpressHandler {
      */
     @Override
     public ExpressResponse<OrderResult> createOrder(CreateOrderParam createOrderParam) {
-        return ExpressResponse.failed(CommonConstant.NO_SOPPORT);
+        Map<String, Object>[] paramItemsMap = new Map[1];
+        paramItemsMap[0] = new HashMap<>(10);
+        paramItemsMap[0].put("txLogisticID", createOrderParam.getOrderId());
+        paramItemsMap[0].put("orderType", "1");
+
+        // 寄件人
+        if (createOrderParam.getSendContactInfo() != null) {
+            Map<String, Object> sender = new HashMap<>(8);
+            sender.put("name", createOrderParam.getSendContactInfo().getContact());
+            sender.put("mobile", createOrderParam.getSendContactInfo().getTel());
+            sender.put("prov", createOrderParam.getSendContactInfo().getProvince());
+            sender.put("city", createOrderParam.getSendContactInfo().getCity());
+            sender.put("area", createOrderParam.getSendContactInfo().getCounty());
+            sender.put("address", createOrderParam.getSendContactInfo().getAddress());
+            sender.put("company", createOrderParam.getSendContactInfo().getCompany());
+            sender.put("postCode", createOrderParam.getSendContactInfo().getPostCode());
+            paramItemsMap[0].put("sender", sender);
+        }
+
+        // 收件人
+        if (createOrderParam.getReceiptContactInfo() != null) {
+            Map<String, Object> receiver = new HashMap<>(8);
+            receiver.put("name", createOrderParam.getReceiptContactInfo().getContact());
+            receiver.put("mobile", createOrderParam.getReceiptContactInfo().getTel());
+            receiver.put("prov", createOrderParam.getReceiptContactInfo().getProvince());
+            receiver.put("city", createOrderParam.getReceiptContactInfo().getCity());
+            receiver.put("area", createOrderParam.getReceiptContactInfo().getCounty());
+            receiver.put("address", createOrderParam.getReceiptContactInfo().getAddress());
+            receiver.put("company", createOrderParam.getReceiptContactInfo().getCompany());
+            receiver.put("postCode", createOrderParam.getReceiptContactInfo().getPostCode());
+            paramItemsMap[0].put("receiver", receiver);
+        }
+
+        // 货物
+        if (createOrderParam.getCargoDetail() != null) {
+            List<Map<String, Object>> items = new ArrayList<>();
+            Map<String, Object> item = new HashMap<>(4);
+            item.put("itemName", createOrderParam.getCargoDetail().getName());
+            item.put("number", createOrderParam.getCargoDetail().getCount());
+            item.put("itemWeight", createOrderParam.getCargoDetail().getWeight());
+            items.add(item);
+            paramItemsMap[0].put("items", items);
+        }
+
+        String param = null;
+        try {
+            param = URLEncoder.encode(JSON.toJSONString(paramItemsMap), "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        String responseData = yuantongRequest.createOrderRequest(param, null);
+        return disposeCreateOrderResult(responseData, createOrderParam.getOrderId());
+    }
+
+    /**
+     * 圆通下单结果处理.
+     *
+     * @param responseData 响应数据
+     * @param orderId      订单号
+     * @return 下单结果
+     */
+    private ExpressResponse<OrderResult> disposeCreateOrderResult(String responseData,
+                                                                  String orderId) {
+        OrderResult orderResult = new OrderResult();
+        orderResult.setOrderId(orderId);
+        try {
+            Map<String, Object> result = JSON.parseObject(responseData,
+                new TypeReference<HashMap<String, Object>>() {
+                });
+            String code = result.get("code") != null ? result.get("code").toString() : null;
+            if ("1".equals(code) || "200".equals(code)) {
+                if (result.get("data") != null) {
+                    Map<String, Object> data = (Map<String, Object>) result.get("data");
+                    orderResult.setExpressNo(data.get("mailNo") != null
+                        ? data.get("mailNo").toString() : null);
+                }
+                return ExpressResponse.ok(orderResult);
+            }
+            return ExpressResponse.failed(result.get("message") != null
+                ? result.get("message").toString() : "下单失败");
+        } catch (JSONException e) {
+            // 圆通可能返回 XML 格式错误
+            try {
+                YuanTongErrorResult errorResult =
+                    JSON.parseObject(responseData, YuanTongErrorResult.class);
+                return ExpressResponse.failed(
+                    StringUtils.isNotEmpty(errorResult.getMessage()) ? errorResult.getMessage() :
+                        errorResult.getReason());
+            } catch (JSONException e2) {
+                String messageStart = "<reason>";
+                String messageEnd = "</reason>";
+                int strStartIndex = responseData.indexOf(messageStart);
+                int strEndIndex = responseData.indexOf(messageEnd);
+                if (strStartIndex >= 0 && strEndIndex > strStartIndex) {
+                    String result =
+                        responseData.substring(strStartIndex, strEndIndex)
+                            .substring(messageStart.length());
+                    return ExpressResponse.failed(result);
+                }
+                return ExpressResponse.failed("圆通下单失败: " + responseData);
+            }
+        }
     }
 
     /**

@@ -85,6 +85,18 @@ public class ZhongtongRequest {
     }
 
     /**
+     * 创建订单.
+     *
+     * @param param JSON参数
+     * @param format 格式
+     * @return 请求结果
+     */
+    public String createOrderRequest(String param, String format) {
+        String requestUrl = requestUrlPrefix + ZhongtongMethod.CREATE_ORDER_URL;
+        return request(requestUrl, param, format);
+    }
+
+    /**
      * 通用请求.
      *
      * @param param 参数

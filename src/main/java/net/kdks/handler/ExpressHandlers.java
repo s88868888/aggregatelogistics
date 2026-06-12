@@ -5,7 +5,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import net.kdks.config.ExpressConfig;
-import net.kdks.enums.ExpressCompanyCodeEnum;
 import net.kdks.model.CreateOrderParam;
 import net.kdks.model.ExpressParam;
 import net.kdks.model.ExpressPriceParam;
@@ -122,10 +121,19 @@ public class ExpressHandlers {
      * @param code express company code
      * @return ExpressHandler
      */
-    private ExpressHandler getSupportedCode(String code) {
-        ExpressHandler handler = expressHandlers.getOrDefault(code,
-            expressHandlers.get(ExpressCompanyCodeEnum.STO.getValue()));
-        Assert.notNull(handler, "不支持的快递公司！");
+    public ExpressHandler getSupportedCode(String code) {
+        ExpressHandler handler = expressHandlers.get(code);
+        Assert.notNull(handler, "不支持的快递公司: " + code
+            + "，当前已注册: " + expressHandlers.keySet());
         return handler;
+    }
+
+    /**
+     * 获取当前已注册的所有快递公司编码.
+     *
+     * @return 快递公司编码集合
+     */
+    public java.util.Set<String> getSupportedCodes() {
+        return expressHandlers.keySet();
     }
 }

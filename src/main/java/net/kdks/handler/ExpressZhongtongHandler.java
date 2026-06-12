@@ -232,7 +232,70 @@ public class ExpressZhongtongHandler implements ExpressHandler {
      */
     @Override
     public ExpressResponse<OrderResult> createOrder(CreateOrderParam createOrderParam) {
-        return ExpressResponse.failed(CommonConstant.NO_SOPPORT);
+        Map<String, Object> param = MapUtils.newHashMap(10);
+        param.put("partnerOrderCode", createOrderParam.getOrderId());
+        param.put("orderType", 1);
+
+        // 寄件人
+        if (createOrderParam.getSendContactInfo() != null) {
+            Map<String, Object> sender = MapUtils.newHashMap(6);
+            sender.put("senderName", createOrderParam.getSendContactInfo().getContact());
+            sender.put("senderMobile", createOrderParam.getSendContactInfo().getTel());
+            sender.put("senderProvince", createOrderParam.getSendContactInfo().getProvince());
+            sender.put("senderCity", createOrderParam.getSendContactInfo().getCity());
+            sender.put("senderDistrict", createOrderParam.getSendContactInfo().getCounty());
+            sender.put("senderAddress", createOrderParam.getSendContactInfo().getAddress());
+            sender.put("senderCompany", createOrderParam.getSendContactInfo().getCompany());
+            param.putAll(sender);
+        }
+
+        // 收件人
+        if (createOrderParam.getReceiptContactInfo() != null) {
+            Map<String, Object> receiver = MapUtils.newHashMap(6);
+            receiver.put("receiverName", createOrderParam.getReceiptContactInfo().getContact());
+            receiver.put("receiverMobile", createOrderParam.getReceiptContactInfo().getTel());
+            receiver.put("receiverProvince", createOrderParam.getReceiptContactInfo().getProvince());
+            receiver.put("receiverCity", createOrderParam.getReceiptContactInfo().getCity());
+            receiver.put("receiverDistrict", createOrderParam.getReceiptContactInfo().getCounty());
+            receiver.put("receiverAddress", createOrderParam.getReceiptContactInfo().getAddress());
+            receiver.put("receiverCompany", createOrderParam.getReceiptContactInfo().getCompany());
+            param.putAll(receiver);
+        }
+
+        // 货物信息
+        if (createOrderParam.getCargoDetail() != null) {
+            param.put("weight", createOrderParam.getCargoDetail().getWeight());
+            param.put("quantity", createOrderParam.getCargoDetail().getCount());
+        }
+
+        String paramStr = JSON.toJSONString(param);
+        String responseData = zhongtongRequest.createOrderRequest(paramStr, null);
+
+        return disposeCreateOrderResult(responseData);
+    }
+
+    /**
+     * 中通下单结果处理.
+     *
+     * @param responseData 响应数据
+     * @return 下单结果
+     */
+    private ExpressResponse<OrderResult> disposeCreateOrderResult(String responseData) {
+        OrderResult orderResult = new OrderResult();
+        ZhongtongResult<Map<String, Object>> result = JSON.parseObject(responseData,
+            new TypeReference<ZhongtongResult<Map<String, Object>>>() {
+            });
+        if (result.getStatus()) {
+            Map<String, Object> data = result.getResult();
+            if (data != null) {
+                orderResult.setExpressNo(data.get("billCode") != null
+                    ? data.get("billCode").toString() : null);
+                orderResult.setOrderId(data.get("orderCode") != null
+                    ? data.get("orderCode").toString() : null);
+            }
+            return ExpressResponse.ok(orderResult);
+        }
+        return ExpressResponse.failed(result.getMessage());
     }
 
     /**

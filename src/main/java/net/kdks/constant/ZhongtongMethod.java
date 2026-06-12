@@ -46,4 +46,9 @@ public interface ZhongtongMethod {
      */
     String QUERY_PRICE_URL = "zto.open.obtainPicePrescription";
 
+    /**
+     * 创建订单服务名.
+     */
+    String CREATE_ORDER_URL = "zto.open.createOrder";
+
 }

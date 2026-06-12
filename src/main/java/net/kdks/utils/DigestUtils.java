@@ -1,5 +1,6 @@
 package net.kdks.utils;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -20,7 +21,7 @@ public class DigestUtils {
 
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(str.getBytes());
+            md.update(str.getBytes(StandardCharsets.UTF_8));
             return md.digest();
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
