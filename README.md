@@ -1,121 +1,152 @@
-<p align="center">
- <img src="https://gitee.com/fuzui/aggregatelogistics/badge/star.svg?theme=dark" alt="Build Status">
- <img src="https://img.shields.io/github/stars/fuzui/aggregatelogistics.svg?style=social" alt="Build Status">
- <img src="https://img.shields.io/badge/aggregatelogistics-0.0.13-brightgreen" alt="Build Status">
-</p>
+# Spring Boot Starter 使用说明
 
+本项目已改造为 Spring Boot Starter，同时保留原有的非 Spring Boot 使用方式。
 
-# 聚合物流(aggregatelogistics)
+## Spring Boot 项目接入
 
-它是一个聚合多家物流公司开放平台的**Java工具类库**，为解决公司电商项目集成物流而生。
+### 1. 安装到本地 Maven 仓库
 
-当前已聚合顺丰、中通、申通、圆通、百世、极兔、京东。
-
-> 提示：多数快递公司都需要企业认证，即营业执照(公司或个体工商户)。所以个人用户难以配置并使用该类库。
-
-# 功能
-
-* 运单轨迹查询：
-
-  当前支持顺丰、中通、申通、圆通、百世、极兔、韵达、京东；
-
-* 运费及实效查询：
-
-  当前支持中通、申通、圆通、极兔；
-
-* 下单：
-
-  当前支持顺丰；
-
-# 使用
-
-## 1. 引入
-
-* Maven
-
-  ```xml
-  <dependency>
-      <groupId>net.kdks</groupId>
-      <artifactId>aggregatelogistics</artifactId>
-      <version>0.0.13</version>
-  </dependency>
-  ```
-
-* Gradle
-
-  ```
-  compile 'net.kdks:aggregatelogistics:0.0.13'
-  ```
-
-## 2. 调用
-
-```java
-// 配置,每行最后一个参数0表示测试环境,1表示正式环境,不填为正式环境. 可选择性配置自己所需的快递公司
-// 所有配置参数需注册该快递公司开放平台，且多数需要企业认证(营业执照)
-ExpressConfig config=ExpressConfig.builder()
-  // 顺丰配置
-  .shunfengConfig("partnerId", "requestId", "checkWord", 1)
-  // 申通配置
-  .shentongConfig("appkey","secretKey",1)
-  // 圆通配置
-  .yuantongConfig("appkey", "secretKey", "userId", 1)
-  // 中通配置
-  .zhongtongConfig("companyId", "secretKey", "companyId", "secretKey", "routeVersioon", 1)
-  // 极兔配置
-  .jituConfig("apiAccount", "privateKey", "uuid", "customerCode", "customerPwd", 1)
-  // 韵达配置
-  .yundaConfig("appKey", "appSecret", 1)
-  // 韵达配置
-  .jingdongConfig("appKey", "appSecret", "accessToken", "customerCode", 1)
-  .build();
-ExpressHandlers expressHandlers=new ExpressHandlers(config);
-// 快递公司编号，具体查看net.kdks.enums.ExpressCompanyCodeEnum
-String expressCompanyNo="SF";
-// 轨迹查询参数
-ExpressParam param=new ExpressParam();
-// 单号必传
-List<String> expressNo = new ArrayList<>();
-expressNo.add("SF1028911111316");
-param.setExpressNos(expressNo);
-// 手机号,顺丰必填(全11位或后4位),中通未绑定面单账号情况下必填
-param.setMobile("0728");
-// 调用运单轨迹查询
-ExpressResponse<ExpressResult> expressResult=expressHandlers.getExpressInfo(param, "SF");
-
-// 运费及实效查询参数，此处省略赋值，具体查看net.kdks.model.ExpressPriceParam
-ExpressPriceParam expressPriceParam = new ExpressPriceParam();
-ExpressResponse<ExpressPriceResult> result = expressHandlers.getExpressPrice(expressPriceParam, "STO");
-
-// 下单参数，此处省略赋值，具体查看net.kdks.model.CreateOrderParam
-CreateOrderParam createOrderParam=new CreateOrderParam();
-// 调用下单
-ExpressResponse<OrderResult> orderResult=expressHandlers.createOrder(createOrderParam, "SF");
+```bash
+mvn clean install -Dgpg.skip=true
 ```
 
+### 2. 引入依赖
 
+```xml
+<dependency>
+    <groupId>net.kdks</groupId>
+    <artifactId>aggregatelogistics</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
 
-## 3. 文档
+### 3. application.yml 配置
 
-> 提示：多数都需要企业认证，即营业执照(公司或个体工商户)。所以个人用户难以配置并使用该类库。
+```yaml
+aggregate-logistics:
+  # 顺丰
+  shunfeng:
+    partner-id: your-partner-id
+    request-id: your-request-id
+    check-word: your-check-word
+    is-product: 0          # 0=沙箱 1=生产
+  # 中通
+  zhongtong:
+    app-key: your-app-key
+    secret-key: your-secret-key
+    is-product: 1
+  # 圆通
+  yuantong:
+    appkey: your-appkey
+    secret-key: your-secret-key
+    user-id: your-user-id
+    is-product: 1
+  # 申通（可选）
+  shentong:
+    appkey: your-appkey
+    secret-key: your-secret-key
+    is-product: 1
+  # 极兔（可选）
+  jitu:
+    api-account: your-api-account
+    private-key: your-private-key
+    is-product: 1
+  # 韵达（可选）
+  yunda:
+    app-key: your-app-key
+    app-secret: your-app-secret
+    is-product: 1
+  # 京东（可选）
+  jingdong:
+    app-key: your-app-key
+    app-secret: your-app-secret
+    access-token: your-access-token
+    customer-code: your-customer-code
+    is-product: 1
+```
 
-* [Github wiki](https://github.com/fuzui/aggregatelogistics/wiki)
+只需配置你要用的快递，未配置的不会注册。
 
-* [Gitee wiki](https://gitee.com/fuzui/aggregatelogistics/wikis/Home)
+### 4. 注入使用
 
-# 示例
+```java
+@RestController
+@RequestMapping("/logistics")
+public class LogisticsController {
 
-* [aggregatelogistics-demo-jfinal]([王泽/aggregatelogistics-demo-jfinal (gitee.com)](https://gitee.com/fuzui/aggregatelogistics-demo-jfinal))
+    @Autowired
+    private ExpressHandlers expressHandlers;
 
-# 反馈或建议
+    /**
+     * 下单
+     */
+    @PostMapping("/createOrder")
+    public ExpressResponse<OrderResult> createOrder(@RequestParam String companyCode,
+                                                    @RequestBody CreateOrderParam param) {
+        return expressHandlers.createOrder(param, companyCode);
+    }
 
-* [Gitee issues](https://gitee.com/fuzui/aggregatelogistics/issues)
+    /**
+     * 查询轨迹
+     */
+    @PostMapping("/track")
+    public ExpressResponse<List<ExpressResult>> track(@RequestParam String companyCode,
+                                                      @RequestBody ExpressParam param) {
+        return expressHandlers.getExpressInfo(param, companyCode);
+    }
 
-* [Github issues](https://github.com/fuzui/aggregatelogistics/issues)
+    /**
+     * 查询已注册的快递公司
+     */
+    @GetMapping("/supported")
+    public Set<String> supported() {
+        return expressHandlers.getSupportedCodes();
+    }
+}
+```
 
-# 致谢
+### 5. 快递公司编码
 
-* [JustAuth](小而全而美的第三方登录开源组件)  参考了其部分设计结构与思想
-* [halo](https://github.com/halo-dev/halo)  参考了其部分设计结构与思想
-* [fastjson](https://github.com/alibaba/fastjson)
+| 编码 | 快递公司 | 下单 | 轨迹 | 运费 |
+|------|---------|------|------|------|
+| SF   | 顺丰速运 | ✅   | ✅   | ❌   |
+| ZTO  | 中通快递 | ✅   | ✅   | ✅   |
+| YTO  | 圆通速递 | ✅   | ✅   | ✅   |
+| STO  | 申通快递 | ❌   | ✅   | ✅   |
+| HTKY | 百世快递 | ❌   | ✅   | ❌   |
+| JT   | 极兔速递 | ❌   | ✅   | ✅   |
+| YD   | 韵达快递 | ❌   | ✅   | ❌   |
+| JD   | 京东物流 | ❌   | ✅   | ❌   |
 
-* [hutool-http](https://gitee.com/loolly/hutool)
+---
+
+## 非 Spring Boot 项目（原有方式不变）
+
+```java
+ExpressConfig config = ExpressConfig.builder()
+    .shunfengConfig("partnerId", "requestId", "checkWord", 1)
+    .zhongtongConfig("companyId", "secretKeyV1", "appKey", "secretKey", "v2", 1)
+    .yuantongConfig("appkey", "secretKey", "userId", 1)
+    .build();
+ExpressHandlers expressHandlers = new ExpressHandlers(config);
+
+// 下单
+ExpressResponse<OrderResult> result = expressHandlers.createOrder(createOrderParam, "SF");
+
+// 查轨迹
+ExpressResponse<List<ExpressResult>> info = expressHandlers.getExpressInfo(expressParam, "ZTO");
+```
+
+---
+
+## 本次改造内容
+
+1. **pom.xml** — 新增 `spring-boot-autoconfigure`（optional）
+2. **新增 `net.kdks.autoconfigure`** — `LogisticsProperties` + `LogisticsAutoConfiguration`
+3. **新增 `META-INF/spring.factories`** — Boot 2.x 自动装配注册
+4. **新增 `META-INF/spring/...AutoConfiguration.imports`** — Boot 3.x 自动装配注册
+5. **修复 `ExpressHandlers.getSupportedCode`** — 去掉静默降级到申通的 bug，改为直接报错
+6. **新增 `ExpressHandlers.getSupportedCodes()`** — 查询已注册快递
+7. **实现中通下单** — `ExpressZhongtongHandler.createOrder` + `ZhongtongRequest.createOrderRequest`
+8. **实现圆通下单** — `ExpressYuantongHandler.createOrder` + `YuantongRequest.createOrderRequest`
+9. **新增常量** — `ZhongtongMethod.CREATE_ORDER_URL` + `YuantongMethod.CREATE_ORDER` / `CREATE_ORDER_URL`
