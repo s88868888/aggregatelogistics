@@ -293,6 +293,76 @@ public class ExpressShunfengHandler implements ExpressHandler {
     }
 
     /**
+     * 派件通知查询（EXP_RECE_DELIVERY_NOTICE）.
+     * 查询派件员信息及预计送达时间。
+     *
+     * @param trackingNo 运单号
+     * @return 派件通知信息（派件员姓名、电话、预计送达时间等）
+     */
+    public ExpressResponse<com.alibaba.fastjson.JSONObject> queryDeliveryNotice(String trackingNo) {
+        String serviceCode = "EXP_RECE_DELIVERY_NOTICE";
+        Map<String, Object> paramItemsMap = new HashMap<>(3);
+        paramItemsMap.put("trackingType", "2");
+        paramItemsMap.put("trackingNumber", Collections.singletonList(trackingNo));
+
+        Map<String, Object> paramMap = getBaseParam(serviceCode, paramItemsMap);
+        String responseData = HttpRequest.post(getRequestUrl())
+            .header(Header.CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .form(paramMap)
+            .execute().body();
+
+        return disposeDeliveryNoticeResult(responseData);
+    }
+
+    private ExpressResponse<com.alibaba.fastjson.JSONObject> disposeDeliveryNoticeResult(String responseData) {
+        com.alibaba.fastjson.JSONObject json = JSON.parseObject(responseData);
+        if (json == null) {
+            return ExpressResponse.failed("响应为空");
+        }
+        // 尝试标准格式 apiResultCode
+        String apiResultCode = json.getString("apiResultCode");
+        if (SUCCESS_FLAG.equals(apiResultCode)) {
+            String apiResultDataStr = json.getString("apiResultData");
+            com.alibaba.fastjson.JSONObject apiResultData = null;
+            if (apiResultDataStr != null) {
+                apiResultData = JSON.parseObject(apiResultDataStr);
+            }
+            if (apiResultData != null && Boolean.TRUE.equals(apiResultData.getBoolean("success"))) {
+                Object msgDataObj = apiResultData.get("msgData");
+                com.alibaba.fastjson.JSONObject msgData = null;
+                if (msgDataObj instanceof com.alibaba.fastjson.JSONObject) {
+                    msgData = (com.alibaba.fastjson.JSONObject) msgDataObj;
+                } else if (msgDataObj instanceof String) {
+                    msgData = JSON.parseObject((String) msgDataObj);
+                }
+                if (msgData != null) {
+                    return ExpressResponse.ok(msgData);
+                }
+            }
+            String errorMsg = apiResultData != null ? apiResultData.getString("errorMsg") : null;
+            if (errorMsg == null && apiResultData != null) errorMsg = apiResultData.getString("errorMessage");
+            return ExpressResponse.failed(errorMsg != null ? errorMsg : "查询失败");
+        }
+        // 尝试直接格式 {success, msgData}
+        Boolean success = json.getBoolean("success");
+        if (Boolean.TRUE.equals(success)) {
+            Object msgDataObj = json.get("msgData");
+            com.alibaba.fastjson.JSONObject msgData = null;
+            if (msgDataObj instanceof com.alibaba.fastjson.JSONObject) {
+                msgData = (com.alibaba.fastjson.JSONObject) msgDataObj;
+            } else if (msgDataObj instanceof String) {
+                msgData = JSON.parseObject((String) msgDataObj);
+            }
+            if (msgData != null) {
+                return ExpressResponse.ok(msgData);
+            }
+        }
+        String errorMsg = json.getString("apiErrorMsg");
+        if (errorMsg == null) errorMsg = json.getString("errorMsg");
+        return ExpressResponse.failed(errorMsg != null ? errorMsg : "查询失败");
+    }
+
+    /**
      * 创建订单.
      *
      * @param createOrderParam 下单参数，主要包含物品信息、收件人信息、寄件人信息等
